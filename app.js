@@ -1,6 +1,6 @@
 const express = require("express");
 const si = require("systeminformation");
-
+const dotenv = require("dotenv");
 const app = express();
 const PORT = 3000;
 
@@ -12,73 +12,41 @@ app.use((req, res, next) => {
   next();
 });
 
-// ========== SSE Endpoint ==========
-app.get("/stats", async (req, res) => {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
+dotenv.config({ path: "./config.env" });
 
-  const interval = setInterval(async () => {
-    const cpu = await si.currentLoad();
-    const mem = await si.mem();
-    const disk = await si.fsSize();
+// require("./startup/db")();
+app.use(require("./logger"));
+const port = process.env.PORT || 3000;
 
-    const data = {
-      cpuUsage: cpu.currentLoad.toFixed(2),
-      ramUsage: ((mem.active / mem.total) * 100).toFixed(2),
-      totalRam: (mem.total / 1073741824).toFixed(2), // in GB
-      diskUsage: ((disk[0].used / disk[0].size) * 100).toFixed(2),
-    };
+// Import the stats route - this will automatically start monitoring
+// const statsRoute = require("./routes/status");
 
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
-  }, 1000);
+// Routes
+// app.use("/stats", statsRoute);
+// app.use("/info", require("./routes/info"));
 
-  // Handle client disconnect
-  req.on("close", () => {
-    clearInterval(interval);
-    res.end();
+const server = app.listen(port, () => {
+  console.log(`Listening on port ${port}...`);
+
+  // Get the actual port (in case it was different from what we specified)
+  const actualPort = server.address().port;
+
+  console.log(`✅ Express server running at http://localhost:${actualPort}`);
+  console.log(`📊 Stats route:   http://localhost:${actualPort}/stats`);
+  console.log(`ℹ️  Info route:    http://localhost:${actualPort}/info`);
+  console.log(`🤖 Auto-monitoring: ENABLED (every 5 seconds)`);
+  console.log(`\n🚀 Server started successfully!`);
+  console.log(`⏰ ${new Date().toLocaleString()}`);
+});
+
+// Clean shutdown
+process.on("SIGINT", () => {
+  console.log("\n🛑 Shutting down server gracefully...");
+  server.close(() => {
+    console.log("✅ Server closed");
+    process.exit(0);
   });
 });
 
-// ========== Info Endpoint ==========
-app.get("/info", async (req, res) => {
-  try {
-    const cpu = await si.cpu();
-    const mem = await si.mem();
-    const disk = await si.fsSize();
-    const osInfo = await si.osInfo();
-
-    const info = {
-      cpu: {
-        manufacturer: cpu.manufacturer,
-        brand: cpu.brand,
-        cores: cpu.cores,
-        speed: cpu.speed + " GHz",
-      },
-      ram: {
-        total: (mem.total / 1073741824).toFixed(2) + " GB",
-      },
-      disk: {
-        size: (disk[0].size / 1073741824).toFixed(2) + " GB",
-        used: (disk[0].used / 1073741824).toFixed(2) + " GB",
-      },
-      os: {
-        platform: osInfo.platform,
-        distro: osInfo.distro,
-        release: osInfo.release,
-      },
-    };
-
-    res.status(200).json(info);
-  } catch (err) {
-    console.error("Error retrieving info:", err);
-    res.status(500).send("Error fetching system info");
-  }
-});
-
-// ========== Start Server ==========
-app.listen(PORT, () => {
-  console.log(`✅ Express server running at http://localhost:${PORT}`);
-  console.log(`📊 SSE stream:   http://localhost:${PORT}/stats`);
-  console.log(`ℹ️  Info route:   http://localhost:${PORT}/info`);
-});
+module.exports = app;
+//
