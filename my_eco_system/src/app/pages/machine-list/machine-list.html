@@ -1,0 +1,168 @@
+<header class="page-head">
+  <div>
+    <h1>Machines</h1>
+    <p class="sub">
+      {{ onlineCount() }} of {{ machines().length }} online
+      @if (autoRefresh() && machines().length) {
+        <span class="auto-tag" title="Auto-checking every 5 seconds">
+          <span class="live-dot"></span> auto
+        </span>
+      }
+    </p>
+  </div>
+  <div class="head-actions">
+    <button
+      class="btn ghost"
+      (click)="toggleAutoRefresh()"
+      [disabled]="!machines().length"
+      [title]="autoRefresh() ? 'Auto-refresh is on (every 5s)' : 'Auto-refresh is off'"
+    >
+      {{ autoRefresh() ? '⏸ Auto: on' : '▶ Auto: off' }}
+    </button>
+    <button class="btn ghost" (click)="refreshAll()" [disabled]="!machines().length">
+      ↻ Refresh now
+    </button>
+  </div>
+</header>
+
+<!-- Add a machine -->
+<section class="card">
+  <h2>Add a machine</h2>
+  <form class="row add-form" (ngSubmit)="add()">
+    <input
+      class="input"
+      type="text"
+      placeholder="IP address (e.g. 192.168.1.42)"
+      [ngModel]="newIp()"
+      (ngModelChange)="newIp.set($event)"
+      name="ip"
+      autocomplete="off"
+    />
+    <input
+      class="input"
+      type="text"
+      placeholder="Label (optional)"
+      [ngModel]="newLabel()"
+      (ngModelChange)="newLabel.set($event)"
+      name="label"
+      autocomplete="off"
+    />
+    <button class="btn primary" type="submit">Add</button>
+  </form>
+  @if (addError()) {
+    <p class="error">{{ addError() }}</p>
+  }
+</section>
+
+<!-- Scan the network -->
+<section class="card">
+  <h2>Scan the network</h2>
+  <p class="hint">
+    Probes <code>http://&lt;ip&gt;:3000/info</code> across a range and adds any agents it finds.
+  </p>
+  <form class="row scan-form" (ngSubmit)="scan()">
+    <label class="field">
+      <span>Base</span>
+      <input
+        class="input"
+        type="text"
+        [ngModel]="scanBase()"
+        (ngModelChange)="scanBase.set($event)"
+        name="base"
+        placeholder="10.143.17"
+      />
+    </label>
+    <label class="field small">
+      <span>From</span>
+      <input
+        class="input"
+        type="number"
+        min="0"
+        max="255"
+        [ngModel]="scanFrom()"
+        (ngModelChange)="scanFrom.set($event)"
+        name="from"
+      />
+    </label>
+    <label class="field small">
+      <span>To</span>
+      <input
+        class="input"
+        type="number"
+        min="0"
+        max="255"
+        [ngModel]="scanTo()"
+        (ngModelChange)="scanTo.set($event)"
+        name="to"
+      />
+    </label>
+    <button class="btn primary" type="submit" [disabled]="scanning()">
+      {{ scanning() ? 'Scanning…' : 'Scan' }}
+    </button>
+  </form>
+
+  @if (scanning() || scanDone() > 0) {
+    <div class="progress">
+      <div class="progress-bar" [style.width.%]="scanProgress()"></div>
+    </div>
+    <p class="hint">
+      {{ scanDone() }} / {{ scanTotal() }} checked · {{ scanFound().length }} found
+    </p>
+  }
+</section>
+
+<!-- Known machines -->
+<section>
+  @if (!machines().length) {
+    <div class="empty">
+      <p>No machines yet.</p>
+      <p class="hint">Add one above or scan your network to get started.</p>
+    </div>
+  } @else {
+    <div class="grid">
+      @for (m of machines(); track m.ip) {
+        <article class="machine" [class.online]="m.status === 'online'" (click)="open(m.ip)">
+          <div class="machine-top">
+            <span class="status-dot" [attr.data-status]="m.status"></span>
+            <div class="machine-id">
+              <strong>{{ m.label || m.ip }}</strong>
+              @if (m.label) {
+                <span class="ip">{{ m.ip }}</span>
+              }
+            </div>
+            <div class="machine-actions">
+              <button class="icon" title="Refresh" (click)="refresh(m.ip, $event)">↻</button>
+              <button class="icon danger" title="Remove" (click)="remove(m.ip, $event)">✕</button>
+            </div>
+          </div>
+
+          <div class="machine-body">
+            @switch (m.status) {
+              @case ('online') {
+                @if (m.info) {
+                  <div class="spec">{{ m.info.os.distro }} {{ m.info.os.release }}</div>
+                  <div class="spec">{{ m.info.cpu.brand }} · {{ m.info.cpu.cores }} cores</div>
+                  <div class="spec">{{ m.info.ram.total }} RAM</div>
+                }
+              }
+              @case ('checking') {
+                <div class="spec muted">Checking…</div>
+              }
+              @case ('offline') {
+                <div class="spec muted">Offline / no agent</div>
+              }
+              @default {
+                <div class="spec muted">Not checked yet</div>
+              }
+            }
+          </div>
+
+          <div class="machine-foot">
+            <span class="badge" [attr.data-status]="m.status">{{ m.status }}</span>
+            <span class="open-hint">Open dashboard →</span>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

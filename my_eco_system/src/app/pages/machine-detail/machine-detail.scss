@@ -1,0 +1,514 @@
+:host {
+  display: block;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  .head-id {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-right: auto;
+
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+    }
+    .ip {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0.5rem 0.9rem;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+  &.ghost {
+    background: transparent;
+  }
+  &.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 600;
+  }
+}
+
+.conn {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+
+  &[data-state='live'] {
+    color: var(--ok);
+    background: rgba(52, 211, 153, 0.13);
+  }
+  &[data-state='connecting'] {
+    color: var(--warn);
+  }
+  &[data-state='error'] {
+    color: var(--danger);
+    background: rgba(248, 113, 113, 0.13);
+  }
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+
+  .metric-label {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .metric-value {
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-top: 0.2rem;
+
+    span {
+      font-size: 1rem;
+      color: var(--text-dim);
+      margin-left: 0.1rem;
+    }
+    &.small {
+      font-size: 1.05rem;
+    }
+  }
+  .metric-sub {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 0.15rem;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: 1.25rem;
+
+  h2 {
+    margin: 0 0 0.9rem;
+    font-size: 1.02rem;
+    font-weight: 600;
+  }
+  h2.mt {
+    margin-top: 1.2rem;
+  }
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+
+  h2 {
+    margin: 0;
+  }
+  .now {
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    font-weight: 600;
+  }
+}
+
+.graph {
+  position: relative;
+  height: 180px;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  &.small {
+    height: 70px;
+    margin-top: 0.75rem;
+  }
+
+  .grid-line {
+    stroke: var(--border);
+    stroke-width: 0.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .axis {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+
+  @media (max-width: 780px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bar {
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+
+  .bar-fill {
+    height: 100%;
+    background: var(--violet);
+    transition: width 0.4s ease;
+  }
+}
+
+.mini-table,
+.proc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+
+  th {
+    text-align: left;
+    color: var(--text-dim);
+    font-weight: 500;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td {
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.proc-table {
+  .name {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.82rem;
+  }
+  .dim {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .usage-cell {
+    position: relative;
+    display: inline-block;
+    padding: 0.05rem 0.4rem;
+    border-radius: 5px;
+    min-width: 46px;
+  }
+  .usage-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(56, 189, 248, 0.18);
+    border-radius: 5px;
+    z-index: 0;
+  }
+}
+
+.gpu-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0;
+
+  .muted {
+    font-size: 0.8rem;
+  }
+}
+
+.muted {
+  color: var(--text-dim);
+}
+
+/* ===== Two-column layout: static info sidebar + live main column ===== */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar {
+  position: sticky;
+  top: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+
+  @media (max-width: 860px) {
+    position: static;
+  }
+}
+
+.main-col {
+  min-width: 0; /* allow the process table to scroll instead of overflow */
+}
+
+.info-list {
+  margin: 0;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  > div:last-child {
+    border-bottom: none;
+  }
+
+  dt {
+    color: var(--text-dim);
+    flex: 0 0 auto;
+  }
+  dd {
+    margin: 0;
+    text-align: right;
+    color: var(--text);
+    word-break: break-word;
+  }
+
+  .group {
+    display: block;
+    justify-content: initial;
+    border-bottom: none;
+    margin-top: 0.6rem;
+    padding-bottom: 0.15rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+}
+
+/* ===== Sortable process table ===== */
+.filter {
+  width: 100%;
+  margin-bottom: 0.85rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.86rem;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.table-scroll {
+  max-height: 460px;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+
+.proc-table.sortable {
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+
+  .sortable-h {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--accent);
+    }
+  }
+}
+
+/* ===== Use more of the screen width on this page ===== */
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Give the info sidebar a bit more room now that the page is wider. */
+.layout {
+  grid-template-columns: 340px 1fr;
+}
+
+/* ===== Segmented view toggle in the header ===== */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 99px;
+  padding: 3px;
+  gap: 3px;
+
+  .seg {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    padding: 0.35rem 0.85rem;
+    border-radius: 99px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+
+    &:hover {
+      color: var(--text);
+    }
+    &.active {
+      background: var(--accent);
+      color: var(--accent-contrast);
+      font-weight: 600;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .seg {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.76rem;
+    }
+  }
+}
+
+/* Taller process table when it has the whole main column to itself. */
+.table-scroll.tall {
+  max-height: calc(100vh - 260px);
+}
+
+/* ===== Process view: lock the page, scroll only inside the table ===== */
+:host.process-view {
+  /* Fill the space under the sticky topbar + app-main top/bottom padding so
+     the page itself doesn't scroll — the table owns the scrollbar instead.
+     Offset = topbar (~57px) + top padding (28px) + bottom padding (48px). */
+  height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .page-head {
+    flex: 0 0 auto;
+  }
+
+  .layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .main-col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .metrics {
+    flex: 0 0 auto;
+  }
+
+  /* The running-apps card grows to fill and clips its own overflow. */
+  .main-col > .card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+
+  .card-head,
+  .filter {
+    flex: 0 0 auto;
+  }
+
+  .table-scroll.tall {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+/* ===== Themed scrollbar for the process table ===== */
+.table-scroll {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) var(--surface-2);
+
+  /* WebKit / Chromium */
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: var(--surface-2);
+    border-radius: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border: 2px solid var(--surface-2);
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--violet);
+  }
+}

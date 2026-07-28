@@ -1,0 +1,286 @@
+<header class="page-head">
+  <button class="btn ghost" (click)="back()">← Machines</button>
+  <div class="head-id">
+    <h1>{{ machine()?.label || ip() }}</h1>
+    @if (machine()?.label) { <span class="ip">{{ ip() }}</span> }
+  </div>
+
+  <div class="view-toggle" role="tablist">
+    <button
+      class="seg"
+      [class.active]="view() === 'graphs'"
+      (click)="view.set('graphs')"
+      role="tab"
+      [attr.aria-selected]="view() === 'graphs'"
+    >
+      📈 Live graphs
+    </button>
+    <button
+      class="seg"
+      [class.active]="view() === 'processes'"
+      (click)="view.set('processes')"
+      role="tab"
+      [attr.aria-selected]="view() === 'processes'"
+    >
+      ▤ Live process
+    </button>
+  </div>
+
+  <span class="conn" [attr.data-state]="connection()">
+    @switch (connection()) {
+      @case ('live') { ● Live }
+      @case ('connecting') { ○ Connecting… }
+      @case ('error') { ● Disconnected }
+    }
+  </span>
+  @if (connection() === 'error') {
+    <button class="btn primary" (click)="reconnect()">Reconnect</button>
+  }
+</header>
+
+<div class="layout">
+  <!-- ===== Left: static system info ===== -->
+  <aside class="sidebar">
+    <section class="card">
+      <h2>System info</h2>
+      @if (info(); as i) {
+        <dl class="info-list">
+          <div><dt>Host</dt><dd>{{ i.os.distro || '—' }}</dd></div>
+          <div><dt>IP address</dt><dd>{{ ip() }}</dd></div>
+          <div><dt>Platform</dt><dd>{{ i.os.platform || '—' }}</dd></div>
+          <div><dt>OS release</dt><dd>{{ i.os.release || '—' }}</dd></div>
+
+          <div class="group">CPU</div>
+          <div><dt>Model</dt><dd>{{ i.cpu.brand || '—' }}</dd></div>
+          @if (i.cpu.manufacturer) {
+            <div><dt>Vendor</dt><dd>{{ i.cpu.manufacturer }}</dd></div>
+          }
+          <div><dt>Cores</dt><dd>{{ i.cpu.cores }}</dd></div>
+          <div><dt>Speed</dt><dd>{{ i.cpu.speed }}</dd></div>
+
+          <div class="group">Memory</div>
+          <div><dt>Total RAM</dt><dd>{{ i.ram.total }}</dd></div>
+
+          @if (i.gpu.model) {
+            <div class="group">GPU</div>
+            <div><dt>Model</dt><dd>{{ i.gpu.model }}</dd></div>
+            @if (i.gpu.vendor) {
+              <div><dt>Vendor</dt><dd>{{ i.gpu.vendor }}</dd></div>
+            }
+            @if (i.gpu.vramMB) {
+              <div><dt>VRAM</dt><dd>{{ i.gpu.vramMB }} MB</dd></div>
+            }
+          }
+
+          @if (i.disk.size) {
+            <div class="group">Disk</div>
+            <div><dt>Size</dt><dd>{{ i.disk.size }}</dd></div>
+            @if (i.disk.used) {
+              <div><dt>Used</dt><dd>{{ i.disk.used }}</dd></div>
+            }
+          }
+        </dl>
+      } @else {
+        <p class="muted">Loading system info…</p>
+      }
+    </section>
+
+    @if (gpu().length) {
+      <section class="card">
+        <h2>GPU (live)</h2>
+        @for (g of gpu(); track g.model) {
+          <div class="gpu-row">
+            <strong>{{ g.model || 'Unknown GPU' }}</strong>
+            <span class="muted">{{ g.vendor }} · {{ g.vramMB }} MB</span>
+          </div>
+        }
+      </section>
+    }
+  </aside>
+
+  <!-- ===== Right: live dashboard ===== -->
+  <div class="main-col">
+    <!-- Top metric cards (always visible) -->
+    <section class="metrics">
+      <div class="metric">
+        <div class="metric-label">CPU</div>
+        <div class="metric-value">{{ cpu().toFixed(1) }}<span>%</span></div>
+        @if (cpuTemp() !== null) {
+          <div class="metric-sub">{{ cpuTemp() }}°C</div>
+        }
+      </div>
+      <div class="metric">
+        <div class="metric-label">Memory</div>
+        <div class="metric-value">{{ mem().toFixed(1) }}<span>%</span></div>
+        <div class="metric-sub">{{ memTotal().toFixed(1) }} GB total</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Processes</div>
+        <div class="metric-value">
+          {{ processCount()?.all ?? processes().length }}
+        </div>
+        <div class="metric-sub">
+          @if (processCount()?.running) {
+            {{ processCount()?.running }} running
+          } @else {
+            total
+          }
+        </div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Disk I/O</div>
+        <div class="metric-value small">
+          ↓ {{ formatRate(snapshot()?.diskIO?.readBytesPerSec || 0) }}
+        </div>
+        <div class="metric-sub">↑ {{ formatRate(snapshot()?.diskIO?.writeBytesPerSec || 0) }}</div>
+      </div>
+    </section>
+
+    @if (view() === 'graphs') {
+      <!-- CPU graph -->
+      <section class="card">
+        <div class="card-head">
+          <h2>CPU usage</h2>
+          <span class="now">{{ cpu().toFixed(1) }}%</span>
+        </div>
+        <div class="graph">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="cpuFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <polyline class="grid-line" points="0,25 100,25" />
+            <polyline class="grid-line" points="0,50 100,50" />
+            <polyline class="grid-line" points="0,75 100,75" />
+            <polygon [attr.points]="cpuArea()" fill="url(#cpuFill)" />
+            <polyline
+              [attr.points]="cpuPoints()"
+              fill="none"
+              stroke="var(--accent)"
+              stroke-width="1.5"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+          <div class="axis"><span>100%</span><span>0%</span></div>
+        </div>
+      </section>
+
+      <div class="two-col">
+        <!-- Memory graph -->
+        <section class="card">
+          <div class="card-head">
+            <h2>Memory</h2>
+            <span class="now">{{ mem().toFixed(1) }}%</span>
+          </div>
+          <div class="bar">
+            <div class="bar-fill" [style.width.%]="mem()"></div>
+          </div>
+          <div class="graph small">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+              <polyline
+                [attr.points]="memPoints()"
+                fill="none"
+                stroke="var(--violet)"
+                stroke-width="1.5"
+                vector-effect="non-scaling-stroke"
+              />
+            </svg>
+          </div>
+        </section>
+
+        <!-- Network -->
+        <section class="card">
+          <h2>Network</h2>
+          @if (network().length) {
+            <table class="mini-table">
+              <thead>
+                <tr><th>Interface</th><th>↓ Down</th><th>↑ Up</th></tr>
+              </thead>
+              <tbody>
+                @for (n of network(); track n.interface) {
+                  <tr>
+                    <td>{{ n.interface }}</td>
+                    <td>{{ formatRate(n.rxRate) }}</td>
+                    <td>{{ formatRate(n.txRate) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="muted">No network data.</p>
+          }
+        </section>
+      </div>
+    } @else {
+      <!-- Running apps (all processes, sortable) -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Running apps</h2>
+          <span class="muted">
+            {{ visibleProcesses().length }} of {{ processes().length }} shown
+          </span>
+        </div>
+
+        <input
+          class="input filter"
+          type="text"
+          placeholder="Filter by name, PID or user…"
+          [ngModel]="filter()"
+          (ngModelChange)="filter.set($event)"
+        />
+
+        @if (processes().length) {
+          <div class="table-scroll tall">
+            <table class="proc-table sortable">
+              <thead>
+                <tr>
+                  <th class="num sortable-h" (click)="setSort('pid')">
+                    PID{{ sortIndicator('pid') }}
+                  </th>
+                  <th class="sortable-h" (click)="setSort('name')">
+                    Name{{ sortIndicator('name') }}
+                  </th>
+                  <th class="sortable-h" (click)="setSort('user')">
+                    User{{ sortIndicator('user') }}
+                  </th>
+                  <th class="num sortable-h" (click)="setSort('cpu')">
+                    CPU %{{ sortIndicator('cpu') }}
+                  </th>
+                  <th class="num sortable-h" (click)="setSort('memory')">
+                    Mem %{{ sortIndicator('memory') }}
+                  </th>
+                  <th class="num sortable-h" (click)="setSort('memoryMB')">
+                    Mem MB{{ sortIndicator('memoryMB') }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of visibleProcesses(); track p.pid) {
+                  <tr>
+                    <td class="num dim">{{ p.pid }}</td>
+                    <td class="name">{{ p.name }}</td>
+                    <td class="dim">{{ p.user || '—' }}</td>
+                    <td class="num">
+                      <span class="usage-cell">
+                        <span class="usage-bar" [style.width.%]="p.cpu"></span>
+                        {{ p.cpu.toFixed(1) }}
+                      </span>
+                    </td>
+                    <td class="num">{{ p.memory.toFixed(1) }}</td>
+                    <td class="num dim">
+                      {{ p.memoryMB != null ? p.memoryMB.toFixed(1) : '—' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="muted">Waiting for process data…</p>
+        }
+      </section>
+    }
+  </div>
+</div>

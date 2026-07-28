@@ -35,7 +35,8 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
-my_eco_system/
+my_eco_system/node_modules/
+my_eco_system/.angular
 
 # Typescript v1 declaration files
 typings/
@@ -62,3 +63,47 @@ typings/
 .next
 
 package-lock.json
+
+
+# # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# # Compiled output
+# /dist
+# /tmp
+# /out-tsc
+# /bazel-out
+
+# # Node
+# /node_modules
+# npm-debug.log
+# yarn-error.log
+
+# # IDEs and editors
+# .idea/
+# .project
+# .classpath
+# .c9/
+# *.launch
+# .settings/
+# *.sublime-workspace
+
+# # Visual Studio Code
+# .vscode/*
+# !.vscode/settings.json
+# !.vscode/tasks.json
+# !.vscode/launch.json
+# !.vscode/extensions.json
+# .history/*
+
+# # Miscellaneous
+# /.angular
+# .sass-cache/
+# /connect.lock
+# /coverage
+# /libpeerconnection.log
+# testem.log
+# /typings
+
+# # System files
+# .DS_Store
+# Thumbs.db

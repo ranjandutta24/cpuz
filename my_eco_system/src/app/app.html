@@ -1,0 +1,35 @@
+<div class="app-shell">
+  <nav class="topbar">
+    <a class="brand" routerLink="/">
+      <span class="brand-mark">◈</span>
+      <span class="brand-name">Eco<strong>System</strong></span>
+    </a>
+    <span class="brand-tag">Network machine monitor</span>
+    <button
+      class="theme-toggle"
+      type="button"
+      (click)="themeService.toggle()"
+      [attr.aria-label]="
+        themeService.theme() === 'dark'
+          ? 'Switch to light theme'
+          : 'Switch to dark theme'
+      "
+      [title]="
+        themeService.theme() === 'dark'
+          ? 'Switch to light theme'
+          : 'Switch to dark theme'
+      "
+    >
+      @if (themeService.theme() === 'dark') {
+        <span class="theme-icon">☀︎</span>
+        <span class="theme-label">Light</span>
+      } @else {
+        <span class="theme-icon">☾</span>
+        <span class="theme-label">Dark</span>
+      }
+    </button>
+  </nav>
+  <main class="app-main">
+    <router-outlet />
+  </main>
+</div>

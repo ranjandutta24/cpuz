@@ -1,0 +1,98 @@
+.app-shell {
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--text);
+
+  .brand-mark {
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+  .brand-name {
+    font-size: 1.05rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+
+    strong {
+      font-weight: 700;
+    }
+  }
+}
+
+.brand-tag {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  border-left: 1px solid var(--border);
+  padding-left: 1rem;
+  margin-right: auto;
+
+  @media (max-width: 520px) {
+    display: none;
+  }
+}
+
+.theme-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0.4rem 0.8rem;
+  border-radius: 99px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .theme-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  @media (max-width: 520px) {
+    .theme-label {
+      display: none;
+    }
+    padding: 0.45rem;
+  }
+}
+
+/* When the tag is hidden on small screens, keep the toggle pushed right. */
+@media (max-width: 520px) {
+  .brand-tag + .theme-toggle {
+    margin-left: auto;
+  }
+}
+
+.app-main {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 3rem;
+}
