@@ -1,9 +1,44 @@
 const express = require("express");
 const si = require("systeminformation");
 const mongoose = require("mongoose");
+const os = require("os");
 
 const router = express.Router();
 // Allow CORS for all origins
+
+// ========== Quick one-shot Health / Info Endpoint (no SSE) ==========
+// Lightweight & fast: uses Node's built-in `os` module (no slow hardware
+// probing) so the frontend can check online/offline and scan a subnet quickly.
+router.get("/check_info", (req, res) => {
+  try {
+    const cpus = os.cpus() || [];
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+
+    res.status(200).json({
+      ok: true,
+      hostname: os.hostname(),
+      platform: os.platform(),
+      release: os.release(),
+      arch: os.arch(),
+      uptime: os.uptime(),
+      cpu: {
+        model: cpus[0] ? cpus[0].model.trim() : "unknown",
+        cores: cpus.length,
+        speedMHz: cpus[0] ? cpus[0].speed : 0,
+      },
+      ram: {
+        totalGB: +(totalMem / 1073741824).toFixed(2),
+        usedGB: +((totalMem - freeMem) / 1073741824).toFixed(2),
+        usedPercent: +(((totalMem - freeMem) / totalMem) * 100).toFixed(2),
+      },
+      loadavg: os.loadavg(),
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
 
 // ========== SSE Endpoint ==========
 router.get("/stats", async (req, res) => {
@@ -166,15 +201,15 @@ router.get("/monitor/live", async (req, res) => {
 
   // Safe initialization
   let prevNetwork = [];
-  let prevDisk = { rBytes: 0, wBytes: 0 };
+  let prevDisk = null; // { rx, wx, t } — byte counters from fsStats
 
   const interval = setInterval(async () => {
     try {
-      const [cpuTemp, network, diskIO, gpu, services, processes, mem, load] =
+      const [cpuTemp, network, fsStats, gpu, services, processes, mem, load] =
         await Promise.all([
           si.cpuTemperature(),
           si.networkStats(),
-          si.disksIO(),
+          si.fsStats(),
           si.graphics(),
           si.services("*"),
           si.processes(),
@@ -200,27 +235,38 @@ router.get("/monitor/live", async (req, res) => {
 
       prevNetwork = network || prevNetwork;
 
-      // ===== Disk IO Rate (NULL SAFE) =====
+      // ===== Disk IO Rate (bytes/sec, NULL SAFE) =====
+      // Note: si.disksIO() exposes rIO/wIO (operation counts), NOT bytes.
+      // The byte counters live in si.fsStats() as rx/wx, so we derive the
+      // rate from those against the elapsed wall-clock time.
       let readRate = 0;
       let writeRate = 0;
 
-      if (diskIO && prevDisk) {
-        readRate = ((diskIO.rBytes || 0) - prevDisk.rBytes) / 2;
+      const nowTs = Date.now();
+      const rx = fsStats && fsStats.rx != null ? fsStats.rx : null;
+      const wx = fsStats && fsStats.wx != null ? fsStats.wx : null;
 
-        writeRate = ((diskIO.wBytes || 0) - prevDisk.wBytes) / 2;
-
-        prevDisk = diskIO;
+      if (rx != null && wx != null) {
+        if (prevDisk) {
+          const dt = (nowTs - prevDisk.t) / 1000; // seconds
+          if (dt > 0) {
+            readRate = Math.max(0, (rx - prevDisk.rx) / dt);
+            writeRate = Math.max(0, (wx - prevDisk.wx) / dt);
+          }
+        }
+        prevDisk = { rx, wx, t: nowTs };
       }
 
-      // ===== Top Processes =====
+      // ===== All Processes (sorted by CPU desc; frontend can re-sort) =====
       const topProcesses = (processes.list || [])
         .sort((a, b) => b.cpu - a.cpu)
-        .slice(0, 10)
         .map((p) => ({
           pid: p.pid,
           name: p.name,
-          cpu: Number(p.cpu.toFixed(2)),
-          memory: Number(p.mem.toFixed(2)),
+          cpu: Number((p.cpu || 0).toFixed(2)),
+          memory: Number((p.mem || 0).toFixed(2)),
+          memoryMB: Number(((p.memRss || 0) / 1024).toFixed(1)),
+          user: p.user || "",
         }));
 
       // ===== Services =====
@@ -260,6 +306,11 @@ router.get("/monitor/live", async (req, res) => {
         gpu: gpuData,
 
         services: importantServices,
+
+        processCount: {
+          all: processes.all || topProcesses.length,
+          running: processes.running || 0,
+        },
 
         processes: topProcesses,
       };
