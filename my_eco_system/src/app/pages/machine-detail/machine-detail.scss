@@ -512,3 +512,70 @@
     background: var(--violet);
   }
 }
+
+/* ===== Per-disk storage breakdown in the sidebar ===== */
+.disks {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.disk {
+  .disk-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .disk-name {
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .disk-type {
+    color: var(--text-dim);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-left: 0.3rem;
+  }
+
+  .disk-figs {
+    color: var(--text-dim);
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .disk-bar {
+    height: 8px;
+    background: var(--surface-2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .disk-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+
+    &.warn {
+      background: var(--warn);
+    }
+    &.crit {
+      background: var(--danger);
+    }
+  }
+
+  .disk-sub {
+    margin-top: 0.25rem;
+    font-size: 0.74rem;
+    color: var(--text-dim);
+  }
+}

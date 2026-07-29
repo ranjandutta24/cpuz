@@ -148,12 +148,19 @@ export class AgentService {
       },
       gpu: {},
       ram: { total: c.ram.totalGB.toFixed(2) + ' GB' },
-      disk: { size: '', used: '' },
+      disk: c.storage
+        ? {
+            size: c.storage.totalGB.toFixed(2) + ' GB',
+            used: c.storage.usedGB.toFixed(2) + ' GB',
+          }
+        : { size: '', used: '' },
       os: {
         platform: c.platform,
         distro: c.hostname,
         release: c.release,
       },
+      osDetails: c.osDetails ?? null,
+      storage: c.storage ?? null,
     };
   }
 

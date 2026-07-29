@@ -3,17 +3,70 @@ const si = require("systeminformation");
 const mongoose = require("mongoose");
 const os = require("os");
 
+// OS details (distro/version/build) are STATIC but si.osInfo() is slow (~5s on
+// some platforms). Fetch it once and cache the promise so /check_info stays fast.
+let cachedOsInfoPromise = null;
+function getOsInfoCached() {
+  if (!cachedOsInfoPromise) {
+    cachedOsInfoPromise = si.osInfo().catch(() => null);
+  }
+  return cachedOsInfoPromise;
+}
+// Warm the cache at startup so the first request is already fast.
+getOsInfoCached();
+
+// Build a storage summary from si.fsSize() (fast). Filters out pseudo
+// filesystems and aggregates total/used/free across real disks/partitions.
+async function getStorageSummary() {
+  try {
+    const skip = new Set([
+      "squashfs", "tmpfs", "devtmpfs", "overlay", "fuse", "fuse.snapfuse",
+      "ramfs", "proc", "sysfs", "cgroup", "cgroup2", "devfs", "autofs",
+    ]);
+    const list = (await si.fsSize()) || [];
+    const disks = list
+      .filter((d) => d.size > 0 && !skip.has((d.type || "").toLowerCase()))
+      .map((d) => ({
+        fs: d.fs,
+        type: d.type,
+        mount: d.mount,
+        sizeGB: +(d.size / 1073741824).toFixed(2),
+        usedGB: +(d.used / 1073741824).toFixed(2),
+        availableGB: +((d.size - d.used) / 1073741824).toFixed(2),
+        usedPercent: d.size ? +((d.used / d.size) * 100).toFixed(1) : 0,
+      }));
+    const totalBytes = disks.reduce((a, d) => a + d.sizeGB, 0);
+    const usedBytes = disks.reduce((a, d) => a + d.usedGB, 0);
+    return {
+      totalGB: +totalBytes.toFixed(2),
+      usedGB: +usedBytes.toFixed(2),
+      availableGB: +(totalBytes - usedBytes).toFixed(2),
+      usedPercent: totalBytes ? +((usedBytes / totalBytes) * 100).toFixed(1) : 0,
+      disks,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const router = express.Router();
 // Allow CORS for all origins
 
 // ========== Quick one-shot Health / Info Endpoint (no SSE) ==========
 // Lightweight & fast: uses Node's built-in `os` module (no slow hardware
 // probing) so the frontend can check online/offline and scan a subnet quickly.
-router.get("/check_info", (req, res) => {
+router.get("/check_info", async (req, res) => {
   try {
     const cpus = os.cpus() || [];
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
+
+    // OS details come from the cached osInfo (static); storage from a fast
+    // fsSize call (live). Both are null-safe so the endpoint never blocks/fails.
+    const [osi, storage] = await Promise.all([
+      getOsInfoCached(),
+      getStorageSummary(),
+    ]);
 
     res.status(200).json({
       ok: true,
@@ -32,6 +85,20 @@ router.get("/check_info", (req, res) => {
         usedGB: +((totalMem - freeMem) / 1073741824).toFixed(2),
         usedPercent: +(((totalMem - freeMem) / totalMem) * 100).toFixed(2),
       },
+      // Full OS/version details (Windows edition, build, etc. on Windows).
+      osDetails: osi
+        ? {
+            distro: osi.distro,
+            release: osi.release,
+            build: osi.build,
+            servicepack: osi.servicepack,
+            kernel: osi.kernel,
+            arch: osi.arch,
+            codename: osi.codename,
+          }
+        : null,
+      // Aggregated storage plus per-disk breakdown (SSD/HDD partitions).
+      storage: storage,
       loadavg: os.loadavg(),
       timestamp: Date.now(),
     });
@@ -369,10 +436,4 @@ module.exports = router;
 //     { pid: 9248, name: "msedge.exe", cpu: 3, memory: 1.76 },
 //     { pid: 4, name: "System", cpu: 2.11, memory: 0 },
 //     { pid: 3300, name: "svchost.exe", cpu: 1.45, memory: 0.16 },
-//     { pid: 12240, name: "Taskmgr.exe", cpu: 1.33, memory: 0.97 },
-//     { pid: 17208, name: "node.exe", cpu: 1.33, memory: 0.4 },
-//     { pid: 11764, name: "WmiPrvSE.exe", cpu: 1.11, memory: 0.18 },
-//     { pid: 18236, name: "msedge.exe", cpu: 1.11, memory: 0.88 },
-//     { pid: 15320, name: "WmiPrvSE.exe", cpu: 1.11, memory: 0.36 },
-//   ],
-// };
+//     { pid: 12240, name: "Taskmgr.exe

@@ -42,6 +42,18 @@ export interface SystemInfo {
     distro: string;
     release: string;
   };
+  /** Full OS/version details when available (from /check_info). */
+  osDetails?: {
+    distro: string;
+    release: string;
+    build: string;
+    servicepack: string;
+    kernel: string;
+    arch: string;
+    codename: string;
+  } | null;
+  /** Aggregated storage + per-disk breakdown (from /check_info). */
+  storage?: StorageSummary | null;
 }
 
 /** A single process/running app entry from the monitor stream. */
@@ -119,6 +131,36 @@ export interface CheckInfo {
     usedGB: number;
     usedPercent: number;
   };
+  osDetails?: {
+    distro: string;
+    release: string;
+    build: string;
+    servicepack: string;
+    kernel: string;
+    arch: string;
+    codename: string;
+  } | null;
+  storage?: StorageSummary | null;
   loadavg: number[];
   timestamp: number;
+}
+
+/** A single disk/partition entry from /check_info storage. */
+export interface DiskInfo {
+  fs: string;
+  type: string;
+  mount: string;
+  sizeGB: number;
+  usedGB: number;
+  availableGB: number;
+  usedPercent: number;
+}
+
+/** Aggregated storage summary + per-disk breakdown. */
+export interface StorageSummary {
+  totalGB: number;
+  usedGB: number;
+  availableGB: number;
+  usedPercent: number;
+  disks: DiskInfo[];
 }

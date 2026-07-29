@@ -47,8 +47,25 @@
         <dl class="info-list">
           <div><dt>Host</dt><dd>{{ i.os.distro || '—' }}</dd></div>
           <div><dt>IP address</dt><dd>{{ ip() }}</dd></div>
-          <div><dt>Platform</dt><dd>{{ i.os.platform || '—' }}</dd></div>
-          <div><dt>OS release</dt><dd>{{ i.os.release || '—' }}</dd></div>
+
+          <div class="group">Operating system</div>
+          @if (i.osDetails; as o) {
+            <div><dt>OS</dt><dd>{{ o.distro || i.os.platform }}</dd></div>
+            <div><dt>Version</dt><dd>{{ o.release || i.os.release || '—' }}</dd></div>
+            @if (o.build) {
+              <div><dt>Build</dt><dd>{{ o.build }}</dd></div>
+            }
+            @if (o.servicepack) {
+              <div><dt>Service pack</dt><dd>{{ o.servicepack }}</dd></div>
+            }
+            @if (o.kernel) {
+              <div><dt>Kernel</dt><dd>{{ o.kernel }}</dd></div>
+            }
+            <div><dt>Architecture</dt><dd>{{ o.arch || '—' }}</dd></div>
+          } @else {
+            <div><dt>Platform</dt><dd>{{ i.os.platform || '—' }}</dd></div>
+            <div><dt>OS release</dt><dd>{{ i.os.release || '—' }}</dd></div>
+          }
 
           <div class="group">CPU</div>
           <div><dt>Model</dt><dd>{{ i.cpu.brand || '—' }}</dd></div>
@@ -72,14 +89,48 @@
             }
           }
 
-          @if (i.disk.size) {
-            <div class="group">Disk</div>
+          @if (i.storage; as st) {
+            <div class="group">Storage</div>
+            <div><dt>Total</dt><dd>{{ st.totalGB }} GB</dd></div>
+            <div><dt>Used</dt><dd>{{ st.usedGB }} GB ({{ st.usedPercent }}%)</dd></div>
+            <div><dt>Available</dt><dd>{{ st.availableGB }} GB</dd></div>
+          } @else if (i.disk.size) {
+            <div class="group">Storage</div>
             <div><dt>Size</dt><dd>{{ i.disk.size }}</dd></div>
             @if (i.disk.used) {
               <div><dt>Used</dt><dd>{{ i.disk.used }}</dd></div>
             }
           }
         </dl>
+
+        @if (i.storage?.disks?.length) {
+          <div class="disks">
+            @for (d of i.storage!.disks; track d.fs) {
+              <div class="disk">
+                <div class="disk-head">
+                  <span class="disk-name" [title]="d.fs">
+                    {{ d.mount || d.fs }}
+                    <span class="disk-type">{{ d.type }}</span>
+                  </span>
+                  <span class="disk-figs">
+                    {{ d.usedGB }} / {{ d.sizeGB }} GB
+                  </span>
+                </div>
+                <div class="disk-bar">
+                  <div
+                    class="disk-bar-fill"
+                    [class.warn]="d.usedPercent >= 75"
+                    [class.crit]="d.usedPercent >= 90"
+                    [style.width.%]="d.usedPercent"
+                  ></div>
+                </div>
+                <div class="disk-sub">
+                  {{ d.availableGB }} GB free · {{ d.usedPercent }}% used
+                </div>
+              </div>
+            }
+          </div>
+        }
       } @else {
         <p class="muted">Loading system info…</p>
       }
