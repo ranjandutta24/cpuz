@@ -88,9 +88,10 @@ export interface ServiceStat {
   running: boolean;
 }
 
-/** Shape of each SSE message from GET /monitor/live. */
+/** Shape of each SSE message from GET /monitor/live (no process data). */
 export interface MonitorSnapshot {
   timestamp: number;
+  uptimeHours?: number;
   cpu: {
     usage: number;
     temperature: number | null;
@@ -106,7 +107,12 @@ export interface MonitorSnapshot {
   };
   gpu: GpuStat[];
   services: ServiceStat[];
-  processCount?: {
+}
+
+/** Shape of each SSE message from GET /monitor/live_process. */
+export interface ProcessSnapshot {
+  timestamp: number;
+  processCount: {
     all: number;
     running: number;
   };

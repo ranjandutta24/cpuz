@@ -272,14 +272,13 @@ router.get("/monitor/live", async (req, res) => {
 
   const interval = setInterval(async () => {
     try {
-      const [cpuTemp, network, fsStats, gpu, services, processes, mem, load] =
+      const [cpuTemp, network, fsStats, gpu, services, mem, load] =
         await Promise.all([
           si.cpuTemperature(),
           si.networkStats(),
           si.fsStats(),
           si.graphics(),
           si.services("*"),
-          si.processes(),
           si.mem(),
           si.currentLoad(),
         ]);
@@ -324,18 +323,6 @@ router.get("/monitor/live", async (req, res) => {
         prevDisk = { rx, wx, t: nowTs };
       }
 
-      // ===== All Processes (sorted by CPU desc; frontend can re-sort) =====
-      const topProcesses = (processes.list || [])
-        .sort((a, b) => b.cpu - a.cpu)
-        .map((p) => ({
-          pid: p.pid,
-          name: p.name,
-          cpu: Number((p.cpu || 0).toFixed(2)),
-          memory: Number((p.mem || 0).toFixed(2)),
-          memoryMB: Number(((p.memRss || 0) / 1024).toFixed(1)),
-          user: p.user || "",
-        }));
-
       // ===== Services =====
       const importantServices = (services || []).slice(0, 10).map((s) => ({
         name: s.name,
@@ -352,6 +339,9 @@ router.get("/monitor/live", async (req, res) => {
       // ===== Final Payload =====
       const payload = {
         timestamp: Date.now(),
+
+        // Uptime in hours (replaces the process count box on the frontend).
+        uptimeHours: Number((os.uptime() / 3600).toFixed(2)),
 
         cpu: {
           usage: Number((load.currentLoad || 0).toFixed(2)),
@@ -373,13 +363,6 @@ router.get("/monitor/live", async (req, res) => {
         gpu: gpuData,
 
         services: importantServices,
-
-        processCount: {
-          all: processes.all || topProcesses.length,
-          running: processes.running || 0,
-        },
-
-        processes: topProcesses,
       };
 
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
@@ -390,6 +373,53 @@ router.get("/monitor/live", async (req, res) => {
 
   req.on("close", () => {
     console.log("📴 Client disconnected");
+    clearInterval(interval);
+    res.end();
+  });
+});
+
+// ========== Live Process List (SSE, for the "Live process" tab) ==========
+// Separated from /monitor/live so the main dashboard stream stays lightweight.
+// Streams the full process list (sorted by CPU desc) plus process counts.
+router.get("/monitor/live_process", async (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  console.log("📡 Client connected to /monitor/live_process");
+
+  const interval = setInterval(async () => {
+    try {
+      const processes = await si.processes();
+
+      const list = (processes.list || [])
+        .sort((a, b) => b.cpu - a.cpu)
+        .map((p) => ({
+          pid: p.pid,
+          name: p.name,
+          cpu: Number((p.cpu || 0).toFixed(2)),
+          memory: Number((p.mem || 0).toFixed(2)),
+          memoryMB: Number(((p.memRss || 0) / 1024).toFixed(1)),
+          user: p.user || "",
+        }));
+
+      const payload = {
+        timestamp: Date.now(),
+        processCount: {
+          all: processes.all || list.length,
+          running: processes.running || 0,
+        },
+        processes: list,
+      };
+
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch (err) {
+      console.error("Process stream error:", err);
+    }
+  }, 2000);
+
+  req.on("close", () => {
+    console.log("📴 Process client disconnected");
     clearInterval(interval);
     res.end();
   });

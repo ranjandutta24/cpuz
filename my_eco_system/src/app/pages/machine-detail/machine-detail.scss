@@ -290,9 +290,15 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  /* Cap to the viewport (minus topbar + paddings) and scroll internally so the
+     system-info/storage list never pushes the main page into scrolling. */
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
 
   @media (max-width: 860px) {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
@@ -433,9 +439,10 @@
   }
 }
 
-/* Taller process table when it has the whole main column to itself. */
+/* Taller process table when it has the whole main column to itself.
+   Capped to the viewport so the table scrolls internally, not the page. */
 .table-scroll.tall {
-  max-height: calc(100vh - 260px);
+  max-height: calc(100vh - 300px);
 }
 
 /* ===== Process view: lock the page, scroll only inside the table ===== */
@@ -489,8 +496,9 @@
   }
 }
 
-/* ===== Themed scrollbar for the process table ===== */
-.table-scroll {
+/* ===== Themed scrollbar for the process table & sidebar ===== */
+.table-scroll,
+.sidebar {
   /* Firefox */
   scrollbar-width: thin;
   scrollbar-color: var(--accent) var(--surface-2);

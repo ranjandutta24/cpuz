@@ -2,17 +2,20 @@ import {
   Component,
   DestroyRef,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AgentService } from '../../services/agent.service';
 import {
   Machine,
   MonitorSnapshot,
   ProcessInfo,
+  ProcessSnapshot,
 } from '../../models/agent.models';
 
 const HISTORY_LEN = 60; // number of samples kept for the graphs
@@ -40,6 +43,7 @@ export class MachineDetail {
   machine = signal<Machine | undefined>(undefined);
 
   snapshot = signal<MonitorSnapshot | null>(null);
+  procSnapshot = signal<ProcessSnapshot | null>(null);
   cpuHistory = signal<number[]>([]);
   memHistory = signal<number[]>([]);
   connection = signal<'connecting' | 'live' | 'error'>('connecting');
@@ -52,16 +56,24 @@ export class MachineDetail {
   sortDir = signal<SortDir>('desc');
   filter = signal('');
 
-  // Derived convenience values
+  // Separate SSE subscription for the process list; only open while the
+  // "Live process" tab is active so /monitor/live_process isn't fetched
+  // needlessly.
+  private procSub: Subscription | null = null;
+
+  // Derived convenience values (dashboard = /monitor/live)
   cpu = computed(() => this.snapshot()?.cpu.usage ?? 0);
   mem = computed(() => this.snapshot()?.memory.usedPercent ?? 0);
   memTotal = computed(() => this.snapshot()?.memory.totalGB ?? 0);
-  processes = computed(() => this.snapshot()?.processes ?? []);
   network = computed(() => this.snapshot()?.network ?? []);
   gpu = computed(() => this.snapshot()?.gpu ?? []);
   cpuTemp = computed(() => this.snapshot()?.cpu.temperature ?? null);
-  processCount = computed(() => this.snapshot()?.processCount ?? null);
+  uptimeHours = computed(() => this.snapshot()?.uptimeHours ?? null);
   info = computed(() => this.machine()?.info);
+
+  // Process data (from /monitor/live_process)
+  processes = computed(() => this.procSnapshot()?.processes ?? []);
+  processCount = computed(() => this.procSnapshot()?.processCount ?? null);
 
   // Filtered + sorted process list for the table.
   visibleProcesses = computed<ProcessInfo[]>(() => {
@@ -101,6 +113,17 @@ export class MachineDetail {
         this.machine.set(this.agent.getMachine(ip));
         this.connect(ip);
       });
+
+    // Open/close the process stream as the view toggles.
+    effect(() => {
+      if (this.view() === 'processes') {
+        this.openProcessStream();
+      } else {
+        this.closeProcessStream();
+      }
+    });
+
+    this.destroyRef.onDestroy(() => this.closeProcessStream());
   }
 
   private connect(ip: string): void {
@@ -129,6 +152,26 @@ export class MachineDetail {
         },
         error: () => this.connection.set('error'),
       });
+
+    // If we're already on the process tab (e.g. after a reconnect), reopen it.
+    if (this.view() === 'processes') this.openProcessStream();
+  }
+
+  private openProcessStream(): void {
+    if (this.procSub) return;
+    const ip = this.ip();
+    const m = this.agent.getMachine(ip) ?? { ip, port: 3000 };
+    this.procSub = this.agent.processStream(m).subscribe({
+      next: (snap) => this.procSnapshot.set(snap),
+      error: () => {
+        /* browser auto-reconnects; keep last data */
+      },
+    });
+  }
+
+  private closeProcessStream(): void {
+    this.procSub?.unsubscribe();
+    this.procSub = null;
   }
 
   back(): void {
@@ -188,5 +231,20 @@ export class MachineDetail {
     if (bytesPerSec < 1024 * 1024)
       return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
     return `${(bytesPerSec / 1024 / 1024).toFixed(2)} MB/s`;
+  }
+
+  /** Uptime as "Xh Ym" from a fractional-hours value. */
+  uptimeHm(): string {
+    const h = this.uptimeHours();
+    if (h === null) return '—';
+    const totalMin = Math.round(h * 60);
+    return `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`;
+  }
+
+  /** Uptime in days (1 decimal) from a fractional-hours value. */
+  uptimeDays(): string {
+    const h = this.uptimeHours();
+    if (h === null) return '';
+    return `${(h / 24).toFixed(1)} days`;
   }
 }

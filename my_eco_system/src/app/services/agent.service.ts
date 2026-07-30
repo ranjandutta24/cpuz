@@ -1,6 +1,12 @@
 import { Injectable, NgZone, signal } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CheckInfo, Machine, MonitorSnapshot, SystemInfo } from '../models/agent.models';
+import {
+  CheckInfo,
+  Machine,
+  MonitorSnapshot,
+  ProcessSnapshot,
+  SystemInfo,
+} from '../models/agent.models';
 
 const STORAGE_KEY = 'eco_machines_v1';
 const DEFAULT_PORT = 3000;
@@ -235,13 +241,30 @@ export class AgentService {
    * MonitorSnapshot for each message. Unsubscribe to close the connection.
    */
   monitorStream(machine: Pick<Machine, 'ip' | 'port'>): Observable<MonitorSnapshot> {
-    const url = `${this.baseUrl(machine)}/monitor/live`;
-    return new Observable<MonitorSnapshot>((subscriber) => {
+    return this.sseStream<MonitorSnapshot>(
+      `${this.baseUrl(machine)}/monitor/live`,
+    );
+  }
+
+  /**
+   * Open an SSE connection to /monitor/live_process (the full process list).
+   * Kept separate from monitorStream so it's only opened when the Live process
+   * tab is active. Unsubscribe to close the connection.
+   */
+  processStream(machine: Pick<Machine, 'ip' | 'port'>): Observable<ProcessSnapshot> {
+    return this.sseStream<ProcessSnapshot>(
+      `${this.baseUrl(machine)}/monitor/live_process`,
+    );
+  }
+
+  /** Generic SSE-to-Observable bridge that re-enters Angular's zone. */
+  private sseStream<T>(url: string): Observable<T> {
+    return new Observable<T>((subscriber) => {
       const source = new EventSource(url);
 
       source.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data) as MonitorSnapshot;
+          const data = JSON.parse(event.data) as T;
           // EventSource callbacks run outside Angular's zone; re-enter so the
           // UI updates. (Signals still work, but this keeps CD predictable.)
           this.zone.run(() => subscriber.next(data));

@@ -166,16 +166,10 @@
         <div class="metric-sub">{{ memTotal().toFixed(1) }} GB total</div>
       </div>
       <div class="metric">
-        <div class="metric-label">Processes</div>
-        <div class="metric-value">
-          {{ processCount()?.all ?? processes().length }}
-        </div>
+        <div class="metric-label">Uptime</div>
+        <div class="metric-value small">{{ uptimeHm() }}</div>
         <div class="metric-sub">
-          @if (processCount()?.running) {
-            {{ processCount()?.running }} running
-          } @else {
-            total
-          }
+          {{ uptimeHours() !== null ? uptimeDays() : 'hours & minutes' }}
         </div>
       </div>
       <div class="metric">
